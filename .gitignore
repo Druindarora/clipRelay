@@ -1,0 +1,37 @@
+# Fichiers Python compilés
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environnements virtuels
+venv/
+env/
+.venv/
+.whisper-env/
+whisper-env/
+# (ajoute ici le nom de ton dossier d'environnement si besoin)
+
+# Fichiers de configuration locaux
+*.env
+.env.*
+
+# Fichiers temporaires et logs
+*.log
+*.tmp
+*.bak
+
+# Fichiers audio générés
+enregistrement.wav
+
+# Dossiers spécifiques à l’IDE
+.vscode/
+.idea/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Dépendances téléchargées (si tu utilises pip freeze > requirements.txt, requirements.txt n’est PAS à ignorer)
+*.egg-info/
+dist/
+build/
