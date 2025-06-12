@@ -117,6 +117,12 @@ def log_status(root, message, success=False):
         root.status_label.config(text=message, fg=color)
 
 def on_hotkey(event=None, root=None):
+    # Remet la fenêtre au premier plan et donne le focus
+    if root:
+        root.lift()
+        root.attributes('-topmost', True)
+        root.focus_force()
+        root.after(500, lambda: root.attributes('-topmost', False))  # Optionnel : retire le "always on top" après 0,5s
     # Simule le clic sur le bouton d'enregistrement
     if root and hasattr(root, "record_btn"):
         root.record_btn.invoke()
