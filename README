@@ -1,0 +1,51 @@
+# ClipRelay
+
+ClipRelay is a desktop application for recording audio, transcribing speech to text (using OpenAI Whisper models), and quickly sending or copying the results for use in chat or code editors like VS Code.
+
+## Features
+
+- Record audio and transcribe it to text using different Whisper models (Tiny, Base, Small, Medium, Large).
+- Copy the transcribed text with a custom prefix for chat relay.
+- Send the transcription directly to ChatGPT.
+- Focus and paste the transcription into VS Code automatically.
+- Choose and remember your preferred Whisper model and window position.
+- Simple, user-friendly interface with icons for each action.
+
+## Requirements
+
+- Python 3.8+
+- Tkinter (usually included with Python)
+- [OpenAI Whisper](https://github.com/openai/whisper) and its dependencies
+- Other dependencies: see `requirements.txt`
+
+## Installation
+
+1. Clone this repository:
+   git clone https://github.com/yourusername/clipRelay.git cd clipRelay
+   
+2. Install dependencies:
+   pip install -r requirements.txt
+
+## Usage
+
+1. Run the application:
+   python main.py
+2. Use the interface to record, transcribe, copy, send, or paste your text.
+
+## Configuration & Settings
+
+- User settings (window size, position, last used model, etc.) are saved automatically in a JSON file.
+- You can add or remove unwanted phrases from the transcription filter in `audioService.py` (see `PHRASES_A_SUPPRIMER`).
+
+## Customization
+
+- To change icons, replace the PNG files in the `img/` folder.
+- To add more unwanted phrases for filtering, edit the list in `audioService.py`.
+
+## License
+
+MIT License
+
+---
+
+*Feel free to contribute or open issues for suggestions and bug reports!*

@@ -1,21 +1,43 @@
-import time
 import tkinter as tk
 import threading
-import os
-import pygetwindow as gw
-import keyboard
 import pyperclip
 from config import config
-from services.audioService import AudioRecorder, transcrire_audio, prepare_new_recording, load_whisper_model
+from services.audioService import AudioRecorder, changer_modele_whisper, prepare_new_recording, load_whisper_model, handle_record
 from services.chatgptService import send_text_to_chatgpt
 from services.vsCodeService import focus_and_paste_in_vscode
+from utils.userSettings import load_user_settings, save_user_settings
+
+# Variable globale pour le modèle sélectionné
+selected_modele = None
+
+def on_configure(event, root):
+    settings = load_user_settings()
+    settings["geometry"] = root.geometry()
+    save_user_settings(settings)
 
 def create_popup():
+    user_settings = load_user_settings()
     root = tk.Tk()
     root.title("ClipRelay")
-    # Utilise la taille de fenêtre depuis le config
+
+    # Taille et position de la fenêtre
     width, height = config['window_size']
-    root.geometry(f"{width}x{height}")
+    geometry = user_settings.get("geometry", f"{width}x{height}")
+    root.geometry(geometry)
+
+    img_model = tk.PhotoImage(file="img/model.png")
+    root.img_model = img_model  # Pour éviter le garbage collector
+
+    modele_court = user_settings.get("modele", "small")
+    root.modele_var = tk.StringVar(value=f"Modèle : {modele_court}")
+    modele_label = tk.Label(
+        root,
+        textvariable=root.modele_var,
+        font=("Arial", 10, "bold"),
+        image=img_model,
+        compound="left"
+    )
+    modele_label.pack(pady=(10, 0))
 
     text_area = tk.Text(root, wrap=tk.WORD)
     text_area.pack(expand=True, fill=tk.BOTH, padx=10, pady=(20, 10))
@@ -24,101 +46,8 @@ def create_popup():
     recorder = AudioRecorder()
     audio_state = {"recording": False, "file_exists": False}
 
-    def handle_record():
-        if not audio_state["recording"]:
-            # Supprimer l'ancien fichier si présent
-            if os.path.exists("enregistrement.wav"):
-                os.remove("enregistrement.wav")
-            # Effacer la zone de texte
-            root.text_area.delete("1.0", tk.END)
-            record_btn.config(state=tk.DISABLED)  # Désactive le bouton pendant la transcription
-            copy_prefix_btn.config(state=tk.DISABLED)
-            send_chatgpt_btn.config(state=tk.DISABLED)
-            show_vscode_btn.config(state=tk.DISABLED)
-            recorder.start()
-            record_btn.config(text="⏹️ Arrêter l'enregistrement")
-            root.status_label.config(text="🔴 Enregistrement en cours...", fg="blue")
-            print("[ClipRelay] Enregistrement démarré")
-            audio_state["recording"] = True
-        else:
-            fichier = recorder.stop()
-            print("[ClipRelay] Arrêt de l'enregistrement demandé")
-            if fichier:
-                print("[ClipRelay] Enregistrement terminé, lancement de la transcription")
-                root.status_label.config(text="🔄 Transcription en cours...", fg="blue")
-                audio_state["file_exists"] = True
-                # Désactive le bouton pendant la transcription
-                record_btn.config(state=tk.DISABLED)
-                threading.Thread(target=handle_transcribe).start()
-            else:
-                root.status_label.config(text="❌ Erreur lors de l'arrêt.", fg="red")
-                print("[ClipRelay] Erreur lors de l'arrêt de l'enregistrement")
-                # Réactive tous les boutons même en cas d'erreur
-                record_btn.config(state=tk.NORMAL)
-                copy_prefix_btn.config(state=tk.NORMAL)
-                send_chatgpt_btn.config(state=tk.NORMAL)
-                show_vscode_btn.config(state=tk.NORMAL)
-            record_btn.config(text="🎙️ Démarrer l'enregistrement")
-            audio_state["recording"] = False
-
-    def handle_transcribe():
-        try:
-            print("[ClipRelay] Début transcription")
-            if not os.path.exists("enregistrement.wav"):
-                root.status_label.config(text="❌ Fichier audio non trouvé.", fg="red")
-                print("[ClipRelay] Fichier audio non trouvé pour la transcription")
-                # Réactive les boutons même en cas d'échec
-                record_btn.config(state=tk.NORMAL)
-                copy_prefix_btn.config(state=tk.NORMAL)
-                send_chatgpt_btn.config(state=tk.NORMAL)
-                show_vscode_btn.config(state=tk.NORMAL)
-                return
-            texte = transcrire_audio("enregistrement.wav")
-            root.text_area.delete("1.0", tk.END)
-            root.text_area.insert(tk.END, texte)
-            root.status_label.config(text="✅ Transcription terminée.", fg="green")
-            print("[ClipRelay] Transcription terminée")
-            # Réactive les boutons seulement ici
-            record_btn.config(state=tk.NORMAL)
-            copy_prefix_btn.config(state=tk.NORMAL)
-            send_chatgpt_btn.config(state=tk.NORMAL)
-            show_vscode_btn.config(state=tk.NORMAL)
-        except Exception as e:
-            root.status_label.config(text=f"Erreur transcription: {e}", fg="red")
-            print(f"[ClipRelay] Erreur transcription: {e}")
-            # Réactive les boutons même en cas d'erreur
-            record_btn.config(state=tk.NORMAL)
-            copy_prefix_btn.config(state=tk.NORMAL)
-            send_chatgpt_btn.config(state=tk.NORMAL)
-            show_vscode_btn.config(state=tk.NORMAL)
-
-    record_btn = tk.Button(root, text="Démarrer l'enregistrement", command=handle_record)
-    record_btn.pack(pady=(0, 10))
-
-    button_frame = tk.Frame(root)
-    button_frame.pack(pady=10)
-
-    col_offset = 0
-
-    copy_prefix_btn = tk.Button(button_frame, text="📋 Copier [ChatRelay]", command=lambda: copy_chatrelay_prefix())
-    copy_prefix_btn.grid(row=0, column=0 + col_offset, padx=10)
-
-    def handle_send_chatgpt():
-        text = root.text_area.get("1.0", "end-1c")
-        send_text_to_chatgpt(
-            text,
-            status_callback=lambda msg, ok: root.status_label.config(text=msg, fg="green" if ok else "red")
-        )
-
-    send_chatgpt_btn = tk.Button(button_frame, text="Envoyer vers ChatGPT", command=handle_send_chatgpt)
-    send_chatgpt_btn.grid(row=0, column=1 + col_offset, padx=10)
-
-    show_vscode_btn = tk.Button(
-        button_frame,
-        text="Focus VS Code",
-        command=lambda: focus_vscode(root)
-    )
-    show_vscode_btn.grid(row=0, column=2 + col_offset, padx=10)
+    # Appelle la création de tous les boutons
+    createButtons(root, recorder, audio_state)
 
     # La zone de message Succès/Erreur passe ici
     status_label = tk.Label(root, text="", fg="red")
@@ -130,10 +59,52 @@ def create_popup():
     countdown_label.pack(pady=(0, 20))
     root.countdown_label = countdown_label
 
-    # Charger Whisper au démarrage
-    threading.Thread(target=load_whisper_model).start()
-
+    threading.Thread(target=lambda: load_whisper_model(modele_court)).start()
+    add_menu(root)
+    root.bind("<Configure>", lambda event: on_configure(event, root))
     return root
+
+def add_menu(root):
+    global selected_modele
+    menu_bar = tk.Menu(root)
+    modele_menu = tk.Menu(menu_bar, tearoff=0)
+
+    # Dictionnaire label affiché -> valeur du modèle
+    modeles = {
+        "Whisper Tiny (39Mo - Faible - Ultra rapide)": "tiny",
+        "Whisper Base (74Mo - Moyen - Rapide)": "base",
+        "Whisper Small (244Mo - Bon - Temps réel ou presque)": "small",
+        "Whisper Medium (769Mo - Très bon - Plus lent)": "medium",
+        "Whisper Large (1.55Go - Excellent - Très lent sans GPU)": "large"
+    }
+
+    # On charge le modèle sauvegardé, sinon "small"
+    user_settings = load_user_settings()
+    modele_sauvegarde = user_settings.get("modele", "small")
+
+    # Variable Tkinter pour le modèle sélectionné (stocke la valeur du modèle)
+    selected_modele = tk.StringVar(value=modele_sauvegarde)
+
+    def select_modele(modele_val):
+        changer_modele_whisper(
+            modele_val,
+            root,
+            root.record_btn,
+            root.copy_prefix_btn,
+            root.send_chatgpt_btn,
+            root.show_vscode_btn,
+        )
+        selected_modele.set(modele_val)
+
+    for label, value in modeles.items():
+        modele_menu.add_radiobutton(
+            label=label,
+            variable=selected_modele,
+            value=value,
+            command=lambda v=value: select_modele(v)
+        )
+    menu_bar.add_cascade(label="Modeles", menu=modele_menu)
+    root.config(menu=menu_bar)
 
 def copy_chatrelay_prefix():
     pyperclip.copy("[ChatRelay] ")
@@ -146,25 +117,9 @@ def log_status(root, message, success=False):
         root.status_label.config(text=message, fg=color)
 
 def on_hotkey(event=None, root=None):
-    try:
-        if root:
-            root.withdraw()
-            # Utilise le délai configurable
-            time.sleep(config['timeouts']['hotkey_delay'])
-        keyboard.send('ctrl+a')
-        time.sleep(config['timeouts']['text_input'])
-        keyboard.send('ctrl+x')
-        time.sleep(config['timeouts']['text_input'])
-        text = pyperclip.paste()
-        log_status(root, f"Texte coupé ({len(text)} caractères) : '{text[:50]}'", success=True)
-        if root:
-            root.deiconify()
-            root.lift()
-            root.focus_force()
-            root.text_area.delete("1.0", tk.END)
-            root.text_area.insert(tk.END, text)
-    except Exception as e:
-        log_status(root, f"Erreur : {e}")
+    # Simule le clic sur le bouton d'enregistrement
+    if root and hasattr(root, "record_btn"):
+        root.record_btn.invoke()
 
 def focus_vscode(root=None):
     text = root.text_area.get("1.0", "end-1c") if root and hasattr(root, "text_area") else ""
@@ -178,5 +133,81 @@ def focus_vscode(root=None):
         status_callback=lambda msg, ok: root.status_label.config(text=msg, fg="green" if ok else "red"),
         countdown_callback=lambda msg: root.countdown_label.config(text=msg, fg="red")
     )
+
+def createButtons(root, recorder, audio_state):
+    # --- BOUTON ENREGISTREMENT + CHRONO ---
+    img_start_record = tk.PhotoImage(file="img/start.png")
+    img_stop_record = tk.PhotoImage(file="img/record_2.png")
+    root.img_start_record = img_start_record
+    root.img_stop_record = img_stop_record
+
+    record_btn = tk.Button(
+        root,
+        image=img_start_record,
+        text="Démarrer l'enregistrement",
+        compound="left",
+        command=lambda: handle_record(
+            root, recorder, audio_state,
+            root.copy_prefix_btn, root.send_chatgpt_btn, root.show_vscode_btn, record_btn
+        )
+    )
+    record_btn.image = img_start_record
+    record_btn.pack(pady=(10, 5))
+    root.record_btn = record_btn
+
+    # Chronomètre juste sous le bouton d'enregistrement
+    root.timer_var = tk.StringVar(value="00:00")
+    timer_label = tk.Label(root, textvariable=root.timer_var, font=("Arial", 10))
+    timer_label.pack()
+
+    # Ensuite la frame pour les trois autres boutons côte à côte
+    button_frame = tk.Frame(root)
+    button_frame.pack(pady=10)
+
+    img_copy = tk.PhotoImage(file="img/copy.png")
+    root.img_copy = img_copy  # Pour éviter le garbage collector
+
+    copy_prefix_btn = tk.Button(
+        button_frame,
+        image=img_copy,
+        text="Copier [ChatRelay]",
+        compound="left",
+        command=lambda: copy_chatrelay_prefix()
+    )
+    copy_prefix_btn.grid(row=0, column=0, padx=10)
+    root.copy_prefix_btn = copy_prefix_btn
+
+    img_send = tk.PhotoImage(file="img/send.png")
+    root.img_send = img_send  # Pour éviter le garbage collector
+
+    def handle_send_chatgpt():
+        text = root.text_area.get("1.0", "end-1c")
+        send_text_to_chatgpt(
+            text,
+            status_callback=lambda msg, ok: root.status_label.config(text=msg, fg="green" if ok else "red")
+        )
+
+    send_chatgpt_btn = tk.Button(
+        button_frame,
+        image=img_send,
+        text="Envoyer vers ChatGPT",
+        compound="left",
+        command=handle_send_chatgpt
+    )
+    send_chatgpt_btn.grid(row=0, column=1, padx=10)
+    root.send_chatgpt_btn = send_chatgpt_btn
+
+    img_focus = tk.PhotoImage(file="img/Focus.png")
+    root.img_focus = img_focus  # Pour éviter le garbage collector
+
+    show_vscode_btn = tk.Button(
+        button_frame,
+        image=img_focus,
+        text="Focus VS Code",
+        compound="left",
+        command=lambda: focus_vscode(root)
+    )
+    show_vscode_btn.grid(row=0, column=2, padx=10)
+    root.show_vscode_btn = show_vscode_btn  # <-- Ajoute cette ligne
 
 prepare_new_recording("enregistrement.wav")
