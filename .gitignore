@@ -30,9 +30,11 @@ enregistrement.wav
 # Fichiers système
 .DS_Store
 Thumbs.db
-settings.json
 
 # Dépendances téléchargées (si tu utilises pip freeze > requirements.txt, requirements.txt n’est PAS à ignorer)
 *.egg-info/
 dist/
 build/
+launch_clipRelay.bat
+launch_clipRelay.lnk
+settings.json
