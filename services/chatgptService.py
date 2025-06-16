@@ -1,30 +1,62 @@
-import time
-import tkinter as tk
 import pyautogui
-import pygetwindow as gw
-import pyperclip
 from config import config
+from utils.countdown import run_countdown
+import time
+import pyperclip
+import pygetwindow as gw
 import requests
+import threading
+
+def send_text_to_chatgpt(text, status_callback=None, root=None):
+    try:
+        import pyperclip, time
+        pyperclip.copy(text)
+        time.sleep(0.05)
+
+        def countdown_callback(msg):
+            if root and hasattr(root, "countdown_label"):
+                root.after(0, lambda: root.countdown_label.config(text=msg, fg="red"))
+            else:
+                print(msg)
+
+        def after_countdown():
+            send_to_chatgpt(root)  # n'appelle PAS le countdown ici
+            if status_callback:
+                status_callback("Texte envoyé à ChatGPT", True)
+
+        def countdown_then_send():
+            run_countdown(
+                config.get('focus_countdown', 5),
+                "Attention, vous avez {n} seconde(s) pour vous focus sur ChatGPT...",
+                countdown_callback
+            )
+            if root:
+                root.after(0, after_countdown)
+            else:
+                after_countdown()
+
+        threading.Thread(target=countdown_then_send, daemon=True).start()
+        return True
+    except Exception as e:
+        if status_callback:
+            status_callback(f"Erreur ChatGPT : {e}", False)
+        return None
 
 def send_to_chatgpt(root=None):
     print("[ClipRelay] clique sur send to chatgpt...")
-    to_gpt(root)
-    time.sleep(config['timeouts'].get('after_paste_delay', 1.0))  # Délai pour laisser le temps à ChatGPT de coller
-    to_tracker(root)
+    to_gpt(root)  # n'appelle PAS le countdown ici
+    time.sleep(config['timeouts'].get('after_paste_delay', 1.0))
+    to_tracker(root)  # n'appelle PAS le countdown ici
 
 def to_gpt(root=None):
     target_title = looking_for_window("[ChatRelay]")
     if target_title:
         win = gw.getWindowsWithTitle(target_title)[0]
         win.activate()
-        time.sleep(0.2)
-        print(f"[ClipRelay] Fenêtre trouvée et activée : {target_title}")
+        time.sleep(config['timeouts'].get('window_switch', 0.5))
         pyautogui.hotkey('ctrl', 'v')
         print("[ClipRelay] Texte collé dans la fenêtre [ChatRelay]")
-        # Allonge le délai avant d'appuyer sur Entrée
-        time.sleep(config['timeouts'].get('after_paste_delay', 1.0))  # Par défaut 1s si non défini
         pyautogui.press('enter')
-        print("[ClipRelay] Entrée simulée dans [ChatRelay]")
         if root and hasattr(root, "status_label"):
             root.status_label.config(text="Texte collé et envoyé dans la fenêtre [ChatRelay]", fg="green")
     else:
@@ -75,16 +107,3 @@ def send_to_tracker_via_api(message):
     except Exception as e:
         print("Erreur lors de l'envoi au tracker :", e)
         return False
-
-def send_text_to_chatgpt(text, status_callback=None, root=None):
-    try:
-        pyperclip.copy(text)
-        time.sleep(0.05)
-        send_to_chatgpt(root)
-        if status_callback:
-            status_callback("Texte envoyé à ChatGPT", True)
-        return True
-    except Exception as e:
-        if status_callback:
-            status_callback(f"Erreur ChatGPT : {e}", False)
-        return None

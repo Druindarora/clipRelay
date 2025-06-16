@@ -3,6 +3,7 @@ import keyboard
 import time
 import pyperclip
 import threading
+from utils.countdown import run_countdown
 
 def focus_and_paste_in_vscode(text, config, status_callback=None, countdown_callback=None):
     def countdown_and_focus():
@@ -13,12 +14,12 @@ def focus_and_paste_in_vscode(text, config, status_callback=None, countdown_call
             win = windows[0]
             win.activate()
             time.sleep(config['timeouts']['window_switch'])
-            for i in range(5, 0, -1):
-                if countdown_callback:
-                    countdown_callback(f"Attention, vous avez 5 secondes pour vous focus sur le chat : {i}")
-                time.sleep(1)
-            if countdown_callback:
-                countdown_callback("")
+            countdown_seconds = config.get('focus_countdown', 5)
+            run_countdown(
+                countdown_seconds,
+                "Attention, vous avez {n} seconde(s) pour vous focus sur VS Code...",
+                countdown_callback
+            )
             active_title = get_active_window_title()
             if active_title and "Visual Studio Code" in active_title:
                 keyboard.send('ctrl+v')

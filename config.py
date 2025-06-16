@@ -7,5 +7,6 @@ config = {
         'hotkey_delay': 1.5,  # délai après withdraw avant ctrl+a/ctrl+x
         'paste_delay': 0.4,    # délai après ctrl+v avant enter
         'after_paste_delay': 1.0
-    }
+    },
+    'focus_countdown': 5  # durée en secondes pour le décompte de focus ChatGPT
 }

@@ -55,9 +55,11 @@ def create_popup():
     root.status_label = status_label
 
     # La zone de compte à rebours reste en bas
-    countdown_label = tk.Label(root, text="", fg="red")
-    countdown_label.pack(pady=(0, 20))
-    root.countdown_label = countdown_label
+    root.countdown_label = tk.Label(root, text="", fg="red", font=("Arial", 12, "bold"))
+    root.countdown_label.pack()  # Place-le sous les boutons
+    # countdown_label = tk.Label(root, text="", fg="red")
+    # countdown_label.pack(pady=(0, 20))
+    # root.countdown_label = countdown_label
 
     threading.Thread(target=lambda: load_whisper_model(modele_court)).start()
     add_menu(root)
@@ -190,7 +192,8 @@ def createButtons(root, recorder, audio_state):
         text = root.text_area.get("1.0", "end-1c")
         send_text_to_chatgpt(
             text,
-            status_callback=lambda msg, ok: root.status_label.config(text=msg, fg="green" if ok else "red")
+            status_callback=lambda msg, ok: root.status_label.config(text=msg, fg="green" if ok else "red"),
+            root=root
         )
 
     send_chatgpt_btn = tk.Button(
@@ -214,6 +217,6 @@ def createButtons(root, recorder, audio_state):
         command=lambda: focus_vscode(root)
     )
     show_vscode_btn.grid(row=0, column=2, padx=10)
-    root.show_vscode_btn = show_vscode_btn  # <-- Ajoute cette ligne
+    root.show_vscode_btn = show_vscode_btn
 
 prepare_new_recording("enregistrement.wav")
