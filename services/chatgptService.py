@@ -91,7 +91,7 @@ def to_tracker(root=None):
 def looking_for_window(window_prefix):
     windows = gw.getAllTitles()
     for title in windows:
-        if title.startswith(window_prefix):
+        if window_prefix in title:
             return title
     return None
 

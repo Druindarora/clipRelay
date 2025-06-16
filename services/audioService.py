@@ -1,4 +1,5 @@
 import time
+from tkinter import messagebox
 import whisper
 import sounddevice as sd
 import numpy as np
@@ -7,17 +8,7 @@ import threading
 import os
 import tkinter as tk
 
-from utils.userSettings import load_user_settings, save_user_settings
-
-MODELE = "small"  # tiny, base, small, medium, large
-whisper_model = None  # modèle global
-
-# Liste des phrases à supprimer (à compléter selon tes besoins)
-PHRASES_A_SUPPRIMER = [
-    "Sous-titres réalisés par la communauté d'Amara.org",
-    "Merci d'avoir regardé cette vidéo.",
-    # Ajoute ici d'autres phrases à filtrer
-]
+from utils.userSettings import PHRASES_A_SUPPRIMER_PAR_DEFAUT, load_user_settings, save_user_settings
 
 class AudioRecorder:
     def __init__(self, fs=44100, channels=1):
@@ -27,7 +18,10 @@ class AudioRecorder:
         self.recording = False
         self.thread = None
 
-    def start(self, duree_sec=60):
+    def start(self, duree_sec=None):
+        if duree_sec is None:
+            settings = load_user_settings()
+            duree_sec = settings.get("duree_enregistrement", 60)
         self.audio = np.empty((0, self.channels), dtype=np.float32)
         self.recording = True
         self.thread = threading.Thread(target=self._record, args=(duree_sec,))
@@ -87,7 +81,7 @@ if __name__ == "__main__":
     fichier_audio = recorder.stop(wav_file)
     transcrire_audio(fichier_audio)
 
-def handle_record(root, recorder, audio_state, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, record_btn):
+def handle_record(root, recorder, audio_state, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, record_btn=None, copy_pollution_btn=None):
     def update_timer():
         if audio_state["recording"]:
             elapsed = int(time.time() - audio_state["start_time"])
@@ -100,9 +94,12 @@ def handle_record(root, recorder, audio_state, copy_prefix_btn, send_chatgpt_btn
         if os.path.exists("enregistrement.wav"):
             os.remove("enregistrement.wav")
         root.text_area.delete("1.0", tk.END)
-        copy_prefix_btn.config(state=tk.DISABLED)
-        send_chatgpt_btn.config(state=tk.DISABLED)
-        show_vscode_btn.config(state=tk.DISABLED)
+        # Désactiver tous les boutons SAUF record_btn pendant l'enregistrement
+        for btn in [copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn]:
+            if btn:
+                btn.config(state="disabled")
+        # record_btn reste actif pour permettre l'arrêt
+
         recorder.start()
         record_btn.config(
             text="Arrêter l'enregistrement",
@@ -137,10 +134,14 @@ def handle_record(root, recorder, audio_state, copy_prefix_btn, send_chatgpt_btn
         )
         record_btn.image = root.img_start_record
         audio_state["recording"] = False
+        # Réactiver tous les boutons à la fin
+        for btn in [copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, record_btn, copy_pollution_btn]:
+            if btn:
+                btn.config(state="normal")
 
 def nettoyer_texte_transcription(texte):
     """Supprime les phrases polluantes du texte de transcription."""
-    for phrase in PHRASES_A_SUPPRIMER:
+    for phrase in PHRASES_A_SUPPRIMER_PAR_DEFAUT:
         texte = texte.replace(phrase, "")
     # Optionnel : supprime les lignes vides créées
     texte = "\n".join([line for line in texte.splitlines() if line.strip() != ""])

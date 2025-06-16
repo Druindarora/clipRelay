@@ -1,5 +1,6 @@
 import keyboard
-from ui.mainWindow import create_popup, on_hotkey
+from ui.mainWindow import create_popup
+from ui.shortcuts import on_hotkey
 
 if __name__ == "__main__":
     root = create_popup()
