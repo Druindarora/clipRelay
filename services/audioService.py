@@ -52,11 +52,16 @@ def load_whisper_model(modele=None):
         print(f"Modèle Whisper déjà chargé : {MODELE}")  # <-- Log si déjà chargé
     return whisper_model
 
-def transcrire_audio(fichier_audio):
+def transcrire_audio(fichier_audio, boutons_a_geler):
     if not os.path.exists(fichier_audio):
         print(f"Fichier audio non trouvé : {fichier_audio}")
         return ""
     try:
+        # Désactiver tous les boutons
+        for btn in boutons_a_geler:
+            if btn:
+                btn.config(state="disabled")
+
         model = load_whisper_model()
         print(f"Transcription en cours... de {fichier_audio}")
         result = model.transcribe(fichier_audio, language="fr")
@@ -66,6 +71,11 @@ def transcrire_audio(fichier_audio):
     except Exception as e:
         print(f"Erreur lors de la transcription : {e}")
         return ""
+    finally:
+        # Réactiver tous les boutons même en cas d'erreur
+        for btn in boutons_a_geler:
+            if btn:
+                btn.config(state="normal")
 
 def prepare_new_recording(fichier="enregistrement.wav"):
     """Supprime l'ancien fichier d'enregistrement s'il existe."""
@@ -120,7 +130,7 @@ def handle_record(root, recorder, audio_state, copy_prefix_btn, send_chatgpt_btn
             root.status_label.config(text="Transcription en cours...", fg="blue")
             audio_state["file_exists"] = True
             record_btn.config(state=tk.DISABLED)
-            threading.Thread(target=handle_transcribe, args=(root, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn)).start()
+            threading.Thread(target=handle_transcribe, args=(root, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn)).start()
         else:
             root.status_label.config(text="Erreur lors de l'arrêt.", fg="red")
             print("[ClipRelay] Erreur lors de l'arrêt de l'enregistrement")
@@ -147,7 +157,7 @@ def nettoyer_texte_transcription(texte):
     texte = "\n".join([line for line in texte.splitlines() if line.strip() != ""])
     return texte
 
-def handle_transcribe(root, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn):
+def handle_transcribe(root, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn):
     try:
         print("[ClipRelay] Début transcription")
         if not os.path.exists("enregistrement.wav"):
@@ -158,7 +168,7 @@ def handle_transcribe(root, record_btn, copy_prefix_btn, send_chatgpt_btn, show_
             send_chatgpt_btn.config(state=tk.NORMAL)
             show_vscode_btn.config(state=tk.NORMAL)
             return
-        texte = transcrire_audio("enregistrement.wav")
+        texte = transcrire_audio("enregistrement.wav", [record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn])
         texte = nettoyer_texte_transcription(texte)  # <-- Nettoyage ici
         root.text_area.delete("1.0", tk.END)
         root.text_area.insert(tk.END, texte)
