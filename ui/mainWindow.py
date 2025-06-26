@@ -14,6 +14,28 @@ def on_configure(event, root):
     settings["geometry"] = root.geometry()
     save_user_settings(settings)
 
+def apply_dark_mode(widget):
+    """Applique un thème sombre à tous les widgets enfants."""
+    dark_bg = "#222222"
+    dark_fg = "#f0f0f0"
+    accent = "#444444"
+    for child in widget.winfo_children():
+        if isinstance(child, (tk.Button, tk.Label, tk.Text, tk.Frame)):
+            try:
+                child.configure(bg=dark_bg, fg=dark_fg)
+            except Exception:
+                pass
+            if isinstance(child, tk.Frame):
+                try:
+                    child.configure(bg=accent)
+                except Exception:
+                    pass
+            apply_dark_mode(child)
+    try:
+        widget.configure(bg=dark_bg)
+    except Exception:
+        pass
+
 def create_popup():
     user_settings = load_user_settings()
     root = tk.Tk()
@@ -76,6 +98,10 @@ def create_popup():
     threading.Thread(target=lambda: load_whisper_model(modele_court)).start()
     add_menu(root, changer_modele_whisper)
     root.bind("<Configure>", lambda event: on_configure(event, root))
+
+    # --- Applique le dark mode juste avant de retourner la fenêtre ---
+    apply_dark_mode(root)
+
     return root
 
 def refresh_buttons(root, recorder, audio_state):
