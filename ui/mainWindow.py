@@ -2,7 +2,7 @@ import tkinter as tk
 import threading
 from config import config
 from services.audioService import AudioRecorder, changer_modele_whisper, prepare_new_recording, load_whisper_model
-from utils.userSettings import MODE_LABELS, load_user_settings, save_user_settings
+from utils.userSettings import load_user_settings, save_user_settings
 from ui.menuBar import add_menu
 from ui.buttons import createButtons
 
@@ -41,6 +41,9 @@ def create_popup():
     root = tk.Tk()
     root.title("ClipRelay")
 
+    # Ajout de l'icône personnalisée
+    root.iconbitmap("img/ClipRelay.ico")
+
     # Taille et position de la fenêtre
     width, height = config['window_size']
     geometry = user_settings.get("geometry", f"{width}x{height}")
@@ -59,6 +62,16 @@ def create_popup():
         compound="left"
     )
     modele_label.pack(pady=(10, 0))
+
+    # Ajout de l'affichage du mot magique
+    from services.audioService import MAGIC_WORD
+    magic_word_label = tk.Label(
+        root,
+        text=f"Mot magique : {MAGIC_WORD}",
+        font=("Arial", 10, "italic"),
+        fg="blue"
+    )
+    magic_word_label.pack(pady=(0, 10))
 
     text_area = tk.Text(root, wrap=tk.WORD)
     text_area.pack(expand=True, fill=tk.BOTH, padx=10, pady=(20, 10))

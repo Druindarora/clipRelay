@@ -1,5 +1,6 @@
 import time
 from tkinter import messagebox
+import torch
 import whisper
 import sounddevice as sd
 import numpy as np
@@ -9,6 +10,8 @@ import os
 import tkinter as tk
 
 from utils.userSettings import PHRASES_A_SUPPRIMER_PAR_DEFAUT, load_user_settings, save_user_settings
+
+MAGIC_WORD = "Orpax"  # Définition du mot magique
 
 class AudioRecorder:
     def __init__(self, fs=44100, channels=1):
@@ -46,7 +49,8 @@ def load_whisper_model(modele=None):
         whisper_model = None  # Force le rechargement
     if whisper_model is None:
         print(f"Chargement du modèle Whisper ({MODELE})...")
-        whisper_model = whisper.load_model(MODELE)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        whisper_model = whisper.load_model(MODELE, device=device)
         print(f"Modèle Whisper chargé : {MODELE}")  # <-- Log du modèle chargé
     else:
         print(f"Modèle Whisper déjà chargé : {MODELE}")  # <-- Log si déjà chargé
@@ -66,6 +70,12 @@ def transcrire_audio(fichier_audio, boutons_a_geler):
         print(f"Transcription en cours... de {fichier_audio}")
         result = model.transcribe(fichier_audio, language="fr")
         texte = result["text"]
+
+        # Vérification du mot magique
+        if MAGIC_WORD in texte:
+            print(f"Mot magique '{MAGIC_WORD}' détecté, arrêt de la transcription.")
+            return ""
+
         print("Résultat :", texte)
         return texte
     except Exception as e:
@@ -116,7 +126,7 @@ def handle_record(root, recorder, audio_state, copy_prefix_btn, send_chatgpt_btn
             image=root.img_stop_record
         )
         record_btn.image = root.img_stop_record
-        root.status_label.config(text="Enregistrement en cours...", fg="blue")
+        root.status_label.config(text="Enregistrement en cours...", fg="orange")
         print("[ClipRelay] Enregistrement démarré")
         audio_state["recording"] = True
         audio_state["start_time"] = time.time()
@@ -127,7 +137,7 @@ def handle_record(root, recorder, audio_state, copy_prefix_btn, send_chatgpt_btn
         print("[ClipRelay] Arrêt de l'enregistrement demandé")
         if fichier:
             print("[ClipRelay] Enregistrement terminé, lancement de la transcription")
-            root.status_label.config(text="Transcription en cours...", fg="blue")
+            root.status_label.config(text="Transcription en cours...", fg="orange")
             audio_state["file_exists"] = True
             record_btn.config(state=tk.DISABLED)
             threading.Thread(target=handle_transcribe, args=(root, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn)).start()
@@ -191,7 +201,7 @@ def changer_modele_whisper(modele, root, record_btn, copy_prefix_btn, send_chatg
     modele_court = modele.split("-")[-1]  # Exemple pour extraire la partie après le tiret
     for widget in [record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn]:
         widget.config(state=tk.DISABLED)
-    root.status_label.config(text=f"Chargement du modèle {modele_court}...", fg="blue")
+    root.status_label.config(text=f"Chargement du modèle {modele_court}...", fg="orange")
     print(f"[ClipRelay] Chargement du modèle {modele_court}")
     def load_and_reenable():
         services.audioService.load_whisper_model(modele)

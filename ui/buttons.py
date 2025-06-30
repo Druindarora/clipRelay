@@ -1,11 +1,11 @@
 import tkinter as tk
-from utils.userSettings import load_user_settings, save_user_settings
+from utils.userSettings import load_user_settings
 from services.chatgptService import send_text_to_chatgpt
 from services.audioService import handle_record
 from services.vsCodeService import focus_and_paste_in_vscode
+import pyperclip
 
 def create_mode1_buttons(root, recorder, audio_state):
-    import pyperclip
 
     # Label durée max
     user_settings = load_user_settings()
@@ -155,7 +155,6 @@ def handle_send_chatgpt(root):
     )
 
 # --- Nouveau bouton Copier pollution ---
-import pyperclip
 def copy_pollution(root):
     try:
         selected_text = root.text_area.get(tk.SEL_FIRST, tk.SEL_LAST)
@@ -174,7 +173,7 @@ def copy_pollution(root):
         if root and hasattr(root, "status_label"):
             root.status_label.config(
                 text="Copier la pollution à la ligne. Copier la nouvelle solution à la ligne.",
-                fg="blue"
+                fg="orange"
             )
     else:
         if root and hasattr(root, "status_label"):
