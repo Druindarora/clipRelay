@@ -11,7 +11,7 @@ import tkinter as tk
 
 from utils.userSettings import PHRASES_A_SUPPRIMER_PAR_DEFAUT, load_user_settings, save_user_settings
 
-MAGIC_WORD = "Orpax"  # Définition du mot magique
+MAGIC_WORDS = ["Orpax", "orpax", "Or pax", "orp axe", "Horpax", "horpax"]  # Liste des variantes du mot magique
 
 class AudioRecorder:
     def __init__(self, fs=44100, channels=1):
@@ -71,13 +71,17 @@ def transcrire_audio(fichier_audio, boutons_a_geler):
         result = model.transcribe(fichier_audio, language="fr")
         texte = result["text"]
 
-        # Vérification du mot magique
-        if MAGIC_WORD in texte:
-            print(f"Mot magique '{MAGIC_WORD}' détecté, arrêt de la transcription.")
-            return ""
+        # Vérification des variantes du mot magique et arrêt après celui-ci
+        texte_final = []
+        for mot in texte.split():
+            texte_final.append(mot)
+            if mot in MAGIC_WORDS:
+                print(f"Mot magique détecté ('{mot}'), arrêt de la transcription après ce mot.")
+                break
 
-        print("Résultat :", texte)
-        return texte
+        texte_final = " ".join(texte_final)
+        print("Résultat :", texte_final)
+        return texte_final
     except Exception as e:
         print(f"Erreur lors de la transcription : {e}")
         return ""

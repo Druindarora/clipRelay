@@ -73,7 +73,7 @@ def create_popup():
     )
     magic_word_label.pack(pady=(0, 10))
 
-    text_area = tk.Text(root, wrap=tk.WORD)
+    text_area = tk.Text(root, wrap=tk.WORD, insertbackground="white")
     text_area.pack(expand=True, fill=tk.BOTH, padx=10, pady=(20, 10))
     root.text_area = text_area
 
