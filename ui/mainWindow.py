@@ -63,11 +63,11 @@ def create_popup():
     )
     modele_label.pack(pady=(10, 0))
 
-    # Ajout de l'affichage du mot magique
-    from services.audioService import MAGIC_WORD
+    # Ajout de l'affichage du premier mot magique
+    from services.audioService import MAGIC_WORDS
     magic_word_label = tk.Label(
         root,
-        text=f"Mot magique : {MAGIC_WORD}",
+        text=f"Mot magique : {MAGIC_WORDS[0]}",
         font=("Arial", 10, "italic"),
         fg="blue"
     )
