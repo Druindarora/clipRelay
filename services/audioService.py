@@ -8,8 +8,8 @@ from scipy.io.wavfile import write
 import threading
 import os
 import tkinter as tk
-
 from utils.userSettings import PHRASES_A_SUPPRIMER_PAR_DEFAUT, load_user_settings, save_user_settings
+from utils.textProcessing import nettoyer_texte_transcription  # Importation ici pour éviter les imports circulaires
 
 MAGIC_WORDS = ["Orpax", "orpax", "Or pax", "Or Pax", "orp axe", "Horpax", "horpax"]  # Liste des variantes du mot magique
 
@@ -164,6 +164,119 @@ def prepare_new_recording(fichier="enregistrement.wav"):
     """
     if os.path.exists(fichier):
         os.remove(fichier)
+
+def handle_transcribe(root, state_manager, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn):
+    """
+    Gère la transcription de l'audio enregistré.
+
+    Args:
+        root (Tk): La fenêtre principale.
+        state_manager (StateManager): Gestionnaire des états des boutons et labels.
+        record_btn (Button): Bouton pour démarrer/arrêter l'enregistrement.
+        copy_prefix_btn (Button): Bouton pour copier le préfixe.
+        send_chatgpt_btn (Button): Bouton pour envoyer à ChatGPT.
+        show_vscode_btn (Button): Bouton pour afficher dans VS Code.
+        copy_pollution_btn (Button): Bouton pour copier les phrases anti-pollution.
+
+    Returns:
+        None
+    """
+    import os
+    import tkinter as tk
+    from utils.textProcessing import nettoyer_texte_transcription
+
+    try:
+        print("[ClipRelay] Début transcription")
+        if not os.path.exists("enregistrement.wav"):
+            state_manager.update_status("Fichier audio non trouvé.", "red")
+            print("[ClipRelay] Fichier audio non trouvé pour la transcription")
+            state_manager.set_buttons_state("normal")
+            return
+        texte = transcrire_audio("enregistrement.wav", [record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn])
+        texte = nettoyer_texte_transcription(texte)  # <-- Nettoyage ici
+        root.text_area.delete("1.0", tk.END)
+        root.text_area.insert(tk.END, texte)
+        state_manager.update_status("Transcription terminée.", "green")
+        print("[ClipRelay] Transcription terminée")
+        state_manager.set_buttons_state("normal")
+    except Exception as e:
+        state_manager.update_status(f"Erreur transcription: {e}", "red")
+        print(f"[ClipRelay] Erreur transcription: {e}")
+        state_manager.set_buttons_state("normal")
+
+def handle_record(root, recorder, audio_state, state_manager, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, record_btn=None, copy_pollution_btn=None):
+    """
+    Gère l'enregistrement audio et son arrêt.
+
+    Args:
+        root (Tk): La fenêtre principale.
+        recorder (AudioRecorder): L'objet enregistreur audio.
+        audio_state (dict): L'état audio actuel.
+        state_manager (StateManager): Gestionnaire des états des boutons et labels.
+        copy_prefix_btn (Button): Bouton pour copier le préfixe.
+        send_chatgpt_btn (Button): Bouton pour envoyer à ChatGPT.
+        show_vscode_btn (Button): Bouton pour afficher dans VS Code.
+        record_btn (Button, optional): Bouton pour démarrer/arrêter l'enregistrement.
+        copy_pollution_btn (Button, optional): Bouton pour copier les phrases anti-pollution.
+
+    Returns:
+        None
+    """
+    import time
+    import os
+    import tkinter as tk
+
+    def update_timer():
+        if audio_state["recording"]:
+            elapsed = int(time.time() - audio_state["start_time"])
+            minutes = elapsed // 60
+            seconds = elapsed % 60
+            root.timer_var.set(f"{minutes:02d}:{seconds:02d}")
+            root.after(1000, update_timer)
+
+    try:
+        if not audio_state["recording"]:
+            if os.path.exists("enregistrement.wav"):
+                os.remove("enregistrement.wav")
+            root.text_area.delete("1.0", tk.END)
+            state_manager.set_buttons_state("disabled")
+
+            recorder.start()
+            record_btn.config(
+                text="Arrêter l'enregistrement",
+                image=root.img_stop_record
+            )
+            record_btn.image = root.img_stop_record
+            state_manager.update_status("Enregistrement en cours...", "orange")
+            print("[ClipRelay] Enregistrement démarré")
+            audio_state["recording"] = True
+            audio_state["start_time"] = time.time()
+            root.timer_var.set("00:00")
+            update_timer()
+        else:
+            fichier = recorder.stop()
+            print("[ClipRelay] Arrêt de l'enregistrement demandé")
+            if fichier:
+                print("[ClipRelay] Enregistrement terminé, lancement de la transcription")
+                state_manager.update_status("Transcription en cours...", "orange")
+                audio_state["file_exists"] = True
+                record_btn.config(state=tk.DISABLED)
+                threading.Thread(target=handle_transcribe, args=(root, state_manager, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn)).start()
+            else:
+                state_manager.update_status("Erreur lors de l'arrêt.", "red")
+                print("[ClipRelay] Erreur lors de l'arrêt de l'enregistrement")
+                state_manager.set_buttons_state("normal")
+            record_btn.config(
+                text="Démarrer l'enregistrement",
+                image=root.img_start_record
+            )
+            record_btn.image = root.img_start_record
+            audio_state["recording"] = False
+            state_manager.set_buttons_state("normal")
+    except Exception as e:
+        state_manager.update_status(f"Erreur lors de l'enregistrement: {e}", "red")
+        print(f"[ClipRelay] Erreur lors de l'enregistrement: {e}")
+        state_manager.set_buttons_state("normal")
 
 if __name__ == "__main__":
     wav_file = "enregistrement.wav"

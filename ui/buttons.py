@@ -1,9 +1,10 @@
 import tkinter as tk
 from utils.userSettings import load_user_settings
-from services.audioService import handle_record
+from services.audioService import handle_record  # Correction de l'import
 from services.vsCodeService import focus_vscode
+from services.chatgptService import handle_send_chatgpt  # Correction de l'import
 
-from utils.utilsButtons import copy_chatrelay_prefix, copy_pollution, handle_send_chatgpt
+from utils.utilsButtons import copy_chatrelay_prefix, copy_pollution
 
 def create_button(parent, image, text, command, compound="left", grid_options=None, pack_options=None):
     """
@@ -108,6 +109,7 @@ def create_mode1_buttons(root, recorder, audio_state):
         text="Démarrer l'enregistrement",
         command=lambda: handle_record(
             root, recorder, audio_state,
+            root.state_manager,  # Ajout de state_manager
             copy_prefix_btn,
             send_chatgpt_btn,
             getattr(root, "show_vscode_btn", None),
@@ -130,7 +132,7 @@ def create_mode1_buttons(root, recorder, audio_state):
     )
     transcription_time_label.pack()
 
-    button_frame = tk.Frame(root.buttons_zone)
+    button_frame = tk.Frame(root.buttons_zone, bg="#222222")  # Ajoute la couleur de fond sombre au frame des boutons
     button_frame.pack(pady=10)
     root.button_frame = button_frame
 
@@ -218,7 +220,7 @@ def createButtons(root, recorder, audio_state, mode=1):
     # Détruit la zone précédente si elle existe
     if hasattr(root, "buttons_zone"):
         root.buttons_zone.destroy()
-    root.buttons_zone = tk.Frame(root)
+    root.buttons_zone = tk.Frame(root, bg="#222222")  # Ajoute la couleur de fond sombre
     root.buttons_zone.pack(pady=10)
 
     if mode == 2:
