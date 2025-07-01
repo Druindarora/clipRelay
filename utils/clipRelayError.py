@@ -1,3 +1,8 @@
+# Ce fichier contient des classes d'erreurs personnalisées pour ClipRelay.
+# Actuellement, ces classes ne sont pas utilisées dans le code.
+# Elles peuvent être utiles pour une gestion centralisée des erreurs à l'avenir.
+# Si une centralisation est mise en place, ce fichier pourrait servir de base.
+
 class ClipRelayError(Exception):
     """Classe de base pour les erreurs de ClipRelay"""
     def __init__(self, message="Une erreur est survenue dans ClipRelay"):

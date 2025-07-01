@@ -1,51 +1,67 @@
 # ClipRelay
 
-ClipRelay is a desktop application for recording audio, transcribing speech to text (using OpenAI Whisper models), and quickly sending or copying the results for use in chat or code editors like VS Code.
+ClipRelay est une application de bureau permettant d'enregistrer de l'audio, de transcrire la parole en texte (en utilisant les modèles Whisper d'OpenAI), et de copier ou envoyer rapidement les résultats pour une utilisation dans des chats ou des éditeurs de code comme VS Code.
 
-## Features
+## Fonctionnalités
 
-- Record audio and transcribe it to text using different Whisper models (Tiny, Base, Small, Medium, Large).
-- Copy the transcribed text with a custom prefix for chat relay.
-- Send the transcription directly to ChatGPT.
-- Focus and paste the transcription into VS Code automatically.
-- Choose and remember your preferred Whisper model and window position.
-- Simple, user-friendly interface with icons for each action.
+- **Enregistrement audio** : Enregistrez de l'audio avec une durée configurable.
+- **Transcription** : Transcrivez l'audio en texte en utilisant différents modèles Whisper (Tiny, Base, Small, Medium, Large).
+- **Copie avec préfixe** : Copiez le texte transcrit avec un préfixe personnalisé pour les relayer dans des chats.
+- **Envoi à ChatGPT** : Envoyez directement la transcription à ChatGPT.
+- **Focus et collage dans VS Code** : Collez automatiquement la transcription dans VS Code et donnez le focus à la fenêtre.
+- **Gestion des modes** : Passez entre le mode normal et le mode anti-pollution pour filtrer les phrases indésirables.
+- **Interface utilisateur intuitive** : Une interface simple avec des icônes pour chaque action.
 
-## Requirements
+## Prérequis
 
-- Python 3.8+
-- Tkinter (usually included with Python)
-- [OpenAI Whisper](https://github.com/openai/whisper) and its dependencies
-- Other dependencies: see `requirements.txt`
+- **Python** : Version 3.8 ou supérieure.
+- **Tkinter** : Inclus avec Python.
+- **Dépendances** :
+  - [OpenAI Whisper](https://github.com/openai/whisper) et ses dépendances.
+  - Autres dépendances : voir `requirements.txt`.
 
 ## Installation
 
-1. Clone this repository:
-   git clone https://github.com/yourusername/clipRelay.git cd clipRelay
-   
-2. Install dependencies:
+1. Clonez ce dépôt :
+   ```bash
+   git clone https://github.com/yourusername/clipRelay.git
+   cd clipRelay
+   ```
+
+2. Installez les dépendances :
+   ```bash
    pip install -r requirements.txt
+   ```
 
-## Usage
+## Utilisation
 
-1. Run the application:
+1. Lancez l'application :
+   ```bash
    python main.py
-2. Use the interface to record, transcribe, copy, send, or paste your text.
+   ```
 
-## Configuration & Settings
+2. Utilisez l'interface pour enregistrer, transcrire, copier, envoyer ou coller votre texte.
 
-- User settings (window size, position, last used model, etc.) are saved automatically in a JSON file.
-- You can add or remove unwanted phrases from the transcription filter in `audioService.py` (see `PHRASES_A_SUPPRIMER`).
+## Configuration et Paramètres
 
-## Customization
+- Les paramètres utilisateur (taille de la fenêtre, position, dernier modèle utilisé, etc.) sont sauvegardés automatiquement dans un fichier JSON.
+- Vous pouvez ajouter ou supprimer des phrases indésirables du filtre de transcription dans `config.py` (voir `PHRASES_A_SUPPRIMER_PAR_DEFAUT`).
+- Les délais et autres configurations sont centralisés dans `config.py`.
 
-- To change icons, replace the PNG files in the `img/` folder.
-- To add more unwanted phrases for filtering, edit the list in `audioService.py`.
+## Personnalisation
 
-## License
+- **Icônes** : Remplacez les fichiers PNG dans le dossier `img/` pour changer les icônes.
+- **Filtres de transcription** : Modifiez la liste des phrases à supprimer dans `config.py`.
+
+## Gestion des erreurs
+
+- Les erreurs spécifiques à l'application sont gérées via des classes personnalisées dans `utils/clipRelayError.py`.
+- Les erreurs liées aux paramètres utilisateur ou à la configuration sont signalées de manière centralisée.
+
+## Licence
 
 MIT License
 
 ---
 
-*Feel free to contribute or open issues for suggestions and bug reports!*
+*Contribuez ou ouvrez des issues pour des suggestions et des rapports de bugs !*

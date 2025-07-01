@@ -1,21 +1,27 @@
 import tkinter as tk
 import threading
+import time
+import os
 from config import config
-from services.audioService import AudioRecorder, changer_modele_whisper, prepare_new_recording, load_whisper_model
-from utils.userSettings import load_user_settings, save_user_settings
+from services.audioService import AudioRecorder, prepare_new_recording, load_whisper_model, transcrire_audio
+from utils.userSettings import load_user_settings, nettoyer_texte_transcription, save_user_settings, PHRASES_A_SUPPRIMER_PAR_DEFAUT
 from ui.menuBar import add_menu
 from ui.buttons import createButtons
+from ui.stateManager import StateManager  # <-- Nouvel import
 
 # Variable globale pour le modèle sélectionné
 selected_modele = None
 
-def on_configure(event, root):
-    settings = load_user_settings()
-    settings["geometry"] = root.geometry()
-    save_user_settings(settings)
-
 def apply_dark_mode(widget):
-    """Applique un thème sombre à tous les widgets enfants."""
+    """
+    Applique un thème sombre à tous les widgets enfants.
+
+    Args:
+        widget (Tk): Le widget racine dont les enfants recevront le thème sombre.
+
+    Returns:
+        None
+    """
     dark_bg = "#222222"
     dark_fg = "#f0f0f0"
     accent = "#444444"
@@ -36,18 +42,93 @@ def apply_dark_mode(widget):
     except Exception:
         pass
 
+def create_status_label(root):
+    """
+    Crée et retourne le label de statut.
+
+    Args:
+        root (Tk): La fenêtre principale.
+
+    Returns:
+        Label: Le label de statut.
+    """
+    status_label = tk.Label(root, text="", fg="red")
+    status_label.pack(pady=(10, 5))
+    return status_label
+
+def create_countdown_label(root):
+    """
+    Crée et retourne le label de compte à rebours.
+
+    Args:
+        root (Tk): La fenêtre principale.
+
+    Returns:
+        Label: Le label de compte à rebours.
+    """
+    countdown_label = tk.Label(root, text="", fg="red", font=("Arial", 12, "bold"))
+    countdown_label.pack()
+    return countdown_label
+
+def create_text_area(root):
+    """
+    Crée et retourne la zone de texte.
+
+    Args:
+        root (Tk): La fenêtre principale.
+
+    Returns:
+        Text: La zone de texte.
+    """
+    text_area = tk.Text(root, wrap=tk.WORD, insertbackground="white")
+    text_area.pack(expand=True, fill=tk.BOTH, padx=10, pady=(20, 10))
+    return text_area
+
+def create_buttons(root, recorder, audio_state, mode):
+    """
+    Crée et configure les boutons de l'application.
+
+    Args:
+        root (Tk): La fenêtre principale.
+        recorder (AudioRecorder): L'objet enregistreur audio.
+        audio_state (dict): L'état audio actuel.
+        mode (int): Le mode à appliquer (1 = normal, 2 = anti-pollution).
+
+    Returns:
+        list: Liste des boutons créés.
+    """
+    from ui.buttons import createButtons
+    return createButtons(root, recorder, audio_state, mode=mode)
+
+def configure_labels(root):
+    """
+    Configure les labels principaux de l'application.
+
+    Args:
+        root (Tk): La fenêtre principale.
+
+    Returns:
+        dict: Dictionnaire contenant les labels configurés.
+    """
+    labels = {
+        "status_label": create_status_label(root),
+        "countdown_label": create_countdown_label(root)
+    }
+    return labels
+
 def create_popup():
+    """
+    Crée la fenêtre principale de l'application ClipRelay.
+
+    Returns:
+        Tk: La fenêtre principale avec tous les composants initialisés.
+    """
     user_settings = load_user_settings()
     root = tk.Tk()
     root.title("ClipRelay")
 
     # Ajout de l'icône personnalisée
     root.iconbitmap("img/ClipRelay.ico")
-
-    # Taille et position de la fenêtre
-    width, height = config['window_size']
-    geometry = user_settings.get("geometry", f"{width}x{height}")
-    root.geometry(geometry)
 
     img_model = tk.PhotoImage(file="img/model.png")
     root.img_model = img_model  # Pour éviter le garbage collector
@@ -67,50 +148,33 @@ def create_popup():
     from services.audioService import MAGIC_WORDS
     magic_word_label = tk.Label(
         root,
-        text=f"Mot magique : {MAGIC_WORDS[0]}",
+        text=f"Mot magique (en medium minimum) : {MAGIC_WORDS[0]}",
         font=("Arial", 10, "italic"),
         fg="blue"
     )
     magic_word_label.pack(pady=(0, 10))
 
-    text_area = tk.Text(root, wrap=tk.WORD, insertbackground="white")
-    text_area.pack(expand=True, fill=tk.BOTH, padx=10, pady=(20, 10))
-    root.text_area = text_area
+    root.text_area = create_text_area(root)
 
     recorder = AudioRecorder()
     audio_state = {"recording": False, "file_exists": False}
     root.recorder = recorder
     root.audio_state = audio_state
 
-    # duree = user_settings.get("duree_enregistrement", 60)
-    # minutes = duree // 60
-    # root.duree_var = tk.StringVar(value=f"Durée max : {minutes} min")
-    # duree_label = tk.Label(
-    #     root,
-    #     textvariable=root.duree_var,
-    #     font=("Arial", 10, "italic")
-    # )
-    # duree_label.pack(pady=(0, 10))
+    # Initialisation de StateManager
+    state_manager = StateManager(root)
+    root.state_manager = state_manager
 
     # Récupère le mode courant (1 = normal, 2 = anti-pollution)
     mode = user_settings.get("mode", 1)
-    createButtons(root, recorder, audio_state, mode=mode)
+    root.buttons = create_buttons(root, recorder, audio_state, mode)
 
-    # La zone de message Succès/Erreur passe ici
-    status_label = tk.Label(root, text="", fg="red")
-    status_label.pack(pady=(10, 5))
-    root.status_label = status_label
-
-    # La zone de compte à rebours reste en bas
-    root.countdown_label = tk.Label(root, text="", fg="red", font=("Arial", 12, "bold"))
-    root.countdown_label.pack()  # Place-le sous les boutons
-    # countdown_label = tk.Label(root, text="", fg="red")
-    # countdown_label.pack(pady=(0, 20))
-    # root.countdown_label = countdown_label
+    labels = configure_labels(root)
+    root.status_label = labels["status_label"]
+    root.countdown_label = labels["countdown_label"]
 
     threading.Thread(target=lambda: load_whisper_model(modele_court)).start()
-    add_menu(root, changer_modele_whisper)
-    root.bind("<Configure>", lambda event: on_configure(event, root))
+    add_menu(root)
 
     # --- Applique le dark mode juste avant de retourner la fenêtre ---
     apply_dark_mode(root)
@@ -118,6 +182,17 @@ def create_popup():
     return root
 
 def refresh_buttons(root, recorder, audio_state):
+    """
+    Rafraîchit la zone des boutons en recréant les boutons selon le mode actuel.
+
+    Args:
+        root (Tk): La fenêtre principale.
+        recorder (AudioRecorder): L'objet enregistreur audio.
+        audio_state (dict): L'état audio actuel.
+
+    Returns:
+        None
+    """
     if hasattr(root, "buttons_zone"):
         root.buttons_zone.destroy()
         delattr(root, "buttons_zone")
@@ -127,6 +202,18 @@ def refresh_buttons(root, recorder, audio_state):
     createButtons(root, recorder, audio_state, mode=mode)
 
 def switch_mode(root, recorder, audio_state, mode):
+    """
+    Change le mode de l'application entre normal et anti-pollution.
+
+    Args:
+        root (Tk): La fenêtre principale.
+        recorder (AudioRecorder): L'objet enregistreur audio.
+        audio_state (dict): L'état audio actuel.
+        mode (int): Le mode à appliquer (1 = normal, 2 = anti-pollution).
+
+    Returns:
+        None
+    """
     createButtons(root, recorder, audio_state, mode)
     if mode == 2:
         user_settings = load_user_settings()
@@ -141,5 +228,147 @@ def switch_mode(root, recorder, audio_state, mode):
         root.text_area.delete("1.0", "end")
         # Remet la bordure à la normale
         root.text_area.config(highlightthickness=1, highlightbackground="grey", highlightcolor="grey")
+
+# Example usage in handle_record
+def handle_record(root, recorder, audio_state, state_manager, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, record_btn=None, copy_pollution_btn=None):
+    """
+    Gère l'enregistrement audio et son arrêt.
+
+    Args:
+        root (Tk): La fenêtre principale.
+        recorder (AudioRecorder): L'objet enregistreur audio.
+        audio_state (dict): L'état audio actuel.
+        state_manager (StateManager): Gestionnaire des états des boutons et labels.
+        copy_prefix_btn (Button): Bouton pour copier le préfixe.
+        send_chatgpt_btn (Button): Bouton pour envoyer à ChatGPT.
+        show_vscode_btn (Button): Bouton pour afficher dans VS Code.
+        record_btn (Button, optional): Bouton pour démarrer/arrêter l'enregistrement.
+        copy_pollution_btn (Button, optional): Bouton pour copier les phrases anti-pollution.
+
+    Returns:
+        None
+    """
+    def update_timer():
+        if audio_state["recording"]:
+            elapsed = int(time.time() - audio_state["start_time"])
+            minutes = elapsed // 60
+            seconds = elapsed % 60
+            root.timer_var.set(f"{minutes:02d}:{seconds:02d}")
+            root.after(1000, update_timer)
+
+    try:
+        if not audio_state["recording"]:
+            if os.path.exists("enregistrement.wav"):
+                os.remove("enregistrement.wav")
+            root.text_area.delete("1.0", tk.END)
+            state_manager.set_buttons_state("disabled")
+
+            recorder.start()
+            record_btn.config(
+                text="Arrêter l'enregistrement",
+                image=root.img_stop_record
+            )
+            record_btn.image = root.img_stop_record
+            state_manager.update_status("Enregistrement en cours...", "orange")
+            print("[ClipRelay] Enregistrement démarré")
+            audio_state["recording"] = True
+            audio_state["start_time"] = time.time()
+            root.timer_var.set("00:00")
+            update_timer()
+        else:
+            fichier = recorder.stop()
+            print("[ClipRelay] Arrêt de l'enregistrement demandé")
+            if fichier:
+                print("[ClipRelay] Enregistrement terminé, lancement de la transcription")
+                state_manager.update_status("Transcription en cours...", "orange")
+                audio_state["file_exists"] = True
+                record_btn.config(state=tk.DISABLED)
+                threading.Thread(target=handle_transcribe, args=(root, state_manager, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn)).start()
+            else:
+                state_manager.update_status("Erreur lors de l'arrêt.", "red")
+                print("[ClipRelay] Erreur lors de l'arrêt de l'enregistrement")
+                state_manager.set_buttons_state("normal")
+            record_btn.config(
+                text="Démarrer l'enregistrement",
+                image=root.img_start_record
+            )
+            record_btn.image = root.img_start_record
+            audio_state["recording"] = False
+            state_manager.set_buttons_state("normal")
+    except Exception as e:
+        state_manager.update_status(f"Erreur lors de l'enregistrement: {e}", "red")
+        print(f"[ClipRelay] Erreur lors de l'enregistrement: {e}")
+        state_manager.set_buttons_state("normal")
+
+def handle_transcribe(root, state_manager, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn):
+    """
+    Gère la transcription de l'audio enregistré.
+
+    Args:
+        root (Tk): La fenêtre principale.
+        state_manager (StateManager): Gestionnaire des états des boutons et labels.
+        record_btn (Button): Bouton pour démarrer/arrêter l'enregistrement.
+        copy_prefix_btn (Button): Bouton pour copier le préfixe.
+        send_chatgpt_btn (Button): Bouton pour envoyer à ChatGPT.
+        show_vscode_btn (Button): Bouton pour afficher dans VS Code.
+        copy_pollution_btn (Button): Bouton pour copier les phrases anti-pollution.
+
+    Returns:
+        None
+    """
+    try:
+        print("[ClipRelay] Début transcription")
+        if not os.path.exists("enregistrement.wav"):
+            state_manager.update_status("Fichier audio non trouvé.", "red")
+            print("[ClipRelay] Fichier audio non trouvé pour la transcription")
+            state_manager.set_buttons_state("normal")
+            return
+        texte = transcrire_audio("enregistrement.wav", [record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn])
+        texte = nettoyer_texte_transcription(texte)  # <-- Nettoyage ici
+        root.text_area.delete("1.0", tk.END)
+        root.text_area.insert(tk.END, texte)
+        state_manager.update_status("Transcription terminée.", "green")
+        print("[ClipRelay] Transcription terminée")
+        state_manager.set_buttons_state("normal")
+    except Exception as e:
+        state_manager.update_status(f"Erreur transcription: {e}", "red")
+        print(f"[ClipRelay] Erreur transcription: {e}")
+        state_manager.set_buttons_state("normal")
+
+def changer_modele_whisper(modele, root, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn):
+    """
+    Change le modèle Whisper utilisé pour la transcription.
+
+    Args:
+        modele (str): Le nom du modèle Whisper à charger.
+        root (Tk): La fenêtre principale.
+        record_btn (Button): Bouton pour démarrer/arrêter l'enregistrement.
+        copy_prefix_btn (Button): Bouton pour copier le préfixe.
+        send_chatgpt_btn (Button): Bouton pour envoyer à ChatGPT.
+        show_vscode_btn (Button): Bouton pour afficher dans VS Code.
+
+    Returns:
+        None
+    """
+    import services.audioService
+    modele_court = modele.split("-")[-1]  # Exemple pour extraire la partie après le tiret
+    for widget in [record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn]:
+        widget.config(state=tk.DISABLED)
+    root.status_label.config(text=f"Chargement du modèle {modele_court}...", fg="orange")
+    print(f"[ClipRelay] Chargement du modèle {modele_court}")
+    def load_and_reenable():
+        services.audioService.load_whisper_model(modele)
+        root.status_label.config(text=f"Modèle {modele_court} chargé !", fg="green")
+        root.modele_var.set(f"Modèle : {modele_court}")
+        print(f"[ClipRelay] Modèle Whisper chargé : {modele_court}")
+        # Sauvegarde du modèle choisi
+        settings = load_user_settings()
+        settings["modele"] = modele
+        save_user_settings(settings)
+        for widget in [record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn]:
+            widget.config(state=tk.NORMAL)
+    threading.Thread(target=load_and_reenable).start()
+
+
 
 prepare_new_recording("enregistrement.wav")
