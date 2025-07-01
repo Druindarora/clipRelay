@@ -97,7 +97,7 @@ def load_whisper_model(modele=None):
         whisper_model = None  # Force le rechargement
     if whisper_model is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        whisper_model = whisper.load_model(MODELE, device=device)
+        whisper_model = whisper.load_model(MODELE).to(device)
     return whisper_model
 
 def transcrire_audio(fichier_audio, boutons_a_geler):
@@ -192,12 +192,21 @@ def handle_transcribe(root, state_manager, record_btn, copy_prefix_btn, send_cha
             print("[ClipRelay] Fichier audio non trouvé pour la transcription")
             state_manager.set_buttons_state("normal")
             return
+
+        # Calcul du temps de transcription
+        start_time = time.time()
         texte = transcrire_audio("enregistrement.wav", [record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn])
+        end_time = time.time()
+        duration = end_time - start_time
+
         texte = nettoyer_texte_transcription(texte)  # <-- Nettoyage ici
         root.text_area.delete("1.0", tk.END)
         root.text_area.insert(tk.END, texte)
         state_manager.update_status("Transcription terminée.", "green")
         print("[ClipRelay] Transcription terminée")
+        # Mise à jour du temps de transcription dans l'application
+        if hasattr(root, "transcription_time_var"):
+            root.transcription_time_var.set(f"Temps de transcription : {duration:.2f} secondes")
         state_manager.set_buttons_state("normal")
     except Exception as e:
         state_manager.update_status(f"Erreur transcription: {e}", "red")
