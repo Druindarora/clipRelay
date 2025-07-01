@@ -45,7 +45,6 @@ ClipRelay est une application de bureau permettant d'enregistrer de l'audio, de 
 ## Configuration et Paramètres
 
 - Les paramètres utilisateur (taille de la fenêtre, position, dernier modèle utilisé, etc.) sont sauvegardés automatiquement dans un fichier JSON.
-- Vous pouvez ajouter ou supprimer des phrases indésirables du filtre de transcription dans `config.py` (voir `PHRASES_A_SUPPRIMER_PAR_DEFAUT`).
 - Les délais et autres configurations sont centralisés dans `config.py`.
 
 ## Personnalisation

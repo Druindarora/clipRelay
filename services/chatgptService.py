@@ -6,6 +6,8 @@ import pyperclip
 import pygetwindow as gw
 import requests
 import threading
+import tkinter as tk
+from tkinter import filedialog
 
 # Constants for configuration
 CHATGPT_WINDOW_PREFIX = "[ChatRelay]"
@@ -62,8 +64,9 @@ def send_text_to_chatgpt(text, status_callback=None, root=None):
         bool: True if the operation started successfully, None otherwise.
     """
     try:
-        pyperclip.copy(text)
-        time.sleep(0.05)
+        # pyperclip.copy(text)
+        # time.sleep(0.05)
+        # Suppression ici — on copiera plus tard dans send_to_chatgpt()
 
         def countdown_callback(msg):
             if status_callback:
@@ -92,11 +95,21 @@ def send_text_to_chatgpt(text, status_callback=None, root=None):
 def send_to_chatgpt(root=None):
     """
     Send text to ChatGPT and optionally update the UI.
-
-    Args:
-        root (Tk, optional): Root UI element for updates.
     """
     print("[ClipRelay] clique sur send to chatgpt...")
+
+    message = pyperclip.paste()
+    if hasattr(root, "text_area"):
+        message = root.text_area.get("1.0", "end-1c").strip()
+
+    if message:
+        pyperclip.copy(message)
+    else:
+        print("[ClipRelay] Aucun message trouvé dans text_area pour envoyer.")
+        if root and hasattr(root, "status_label"):
+            root.status_label.config(text="Rien à envoyer à ChatGPT", fg="red")
+        return
+
     to_gpt(root)
     time.sleep(config['timeouts'].get('after_paste_delay', 1.0))
     to_tracker(root)
@@ -184,3 +197,28 @@ def handle_send_chatgpt(text, status_callback=None):
         text,
         status_callback=status_callback
     )
+
+def formater_fichiers_pour_chatgpt(fichiers):
+    blocs = []
+    for chemin in fichiers:
+        try:
+            with open(chemin, "r", encoding="utf-8") as f:
+                contenu = f.read()
+            bloc = f"=== Fichier : {chemin.split('/')[-1]} ===\n{contenu}"
+            blocs.append(bloc)
+        except Exception as e:
+            blocs.append(f"=== Fichier : {chemin.split('/')[-1]} ===\n[Erreur de lecture : {e}]")
+    return "\n\n".join(blocs)
+
+def ajouter_fichiers_a_zone_texte(zone_texte):
+    contenu_actuel = zone_texte.get("1.0", tk.END).strip()
+    if not contenu_actuel:
+        print("⚠️ Aucune consigne présente. Ajoutez une consigne avant de joindre des fichiers.")
+        return
+
+    fichiers = filedialog.askopenfilenames(title="Choisir les fichiers à joindre")
+    if not fichiers:
+        return
+
+    contenu_fichiers = formater_fichiers_pour_chatgpt(fichiers)
+    zone_texte.insert(tk.END, "\n\n" + contenu_fichiers + "\n")

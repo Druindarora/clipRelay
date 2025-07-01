@@ -2,7 +2,7 @@ import tkinter as tk
 import threading
 import time
 import os
-from config import config
+from config import MAGIC_PHRASES, config
 from services.audioService import AudioRecorder, prepare_new_recording, load_whisper_model
 from utils.textProcessing import nettoyer_texte_transcription  # Correction de l'import
 from utils.userSettings import load_user_settings, save_user_settings
@@ -128,6 +128,9 @@ def create_popup():
     root = tk.Tk()
     root.title("ClipRelay")
 
+    root.timer_var = tk.StringVar(value="00:00")
+    root.transcription_time_var = tk.StringVar(value="Temps de transcription : --")
+
     # Ajout de l'icône personnalisée
     root.iconbitmap("img/ClipRelay.ico")
 
@@ -146,10 +149,9 @@ def create_popup():
     modele_label.pack(pady=(10, 0))
 
     # Ajout de l'affichage du premier mot magique
-    from services.audioService import MAGIC_WORDS
     magic_word_label = tk.Label(
         root,
-        text=f"Mot magique (en medium minimum) : {MAGIC_WORDS[0]}",
+        text=f"Mot magique (en medium minimum) : {MAGIC_PHRASES[0]}",
         font=("Arial", 10, "italic"),
         fg="blue"
     )
@@ -170,11 +172,18 @@ def create_popup():
     state_manager = StateManager(root)
     root.state_manager = state_manager
 
-    # Récupère le mode courant (1 = normal, 2 = anti-pollution)
-    mode = user_settings.get("mode", 1)
+    mode = 1
     root.buttons = create_buttons(root, recorder, audio_state, mode)
 
-    threading.Thread(target=lambda: load_whisper_model(modele_court)).start()
+    threading.Thread(target=lambda: changer_modele_whisper(
+        modele_court,
+        root,
+        root.record_btn,
+        root.copy_prefix_btn,
+        root.send_chatgpt_btn,
+        root.show_vscode_btn
+    )).start()
+
     add_menu(root, changer_modele_whisper)
 
     # --- Applique le dark mode juste avant de retourner la fenêtre ---
@@ -217,29 +226,17 @@ def switch_mode(root, recorder, audio_state, mode):
     """
     createButtons(root, recorder, audio_state, mode)
     if mode == 2:
-        user_settings = load_user_settings()
-        phrases = user_settings.get("phrases_a_supprimer", [])
-        if not phrases:
-            phrases = ["(Aucune phrase à supprimer)"]
+        # Affiche les phrases magiques en mode 2
         root.text_area.delete("1.0", "end")
-        root.text_area.insert("1.0", "\n".join(phrases))
+        root.text_area.insert("1.0", "\n".join(MAGIC_PHRASES))
         # Ajoute une bordure rouge
         root.text_area.config(highlightthickness=2, highlightbackground="red", highlightcolor="red")
     else:
         root.text_area.delete("1.0", "end")
         # Remet la bordure à la normale
         root.text_area.config(highlightthickness=1, highlightbackground="grey", highlightcolor="grey")
-        # Réinitialise les couleurs des labels
-        for label_name in ['duree_label', 'transcription_time_label', 'timer_label']:
-            label = getattr(root, label_name, None)
-            if label:
-                label.config(bg="#222222", fg="#f0f0f0")  # Réapplique le thème sombre
-        # Réinitialise également la zone de texte au thème sombre
-        root.text_area.config(bg="#222222", fg="#f0f0f0")
-        # Réinitialise les couleurs des boutons
-        if root.buttons:
-            for button in root.buttons:
-                button.config(bg="#222222", fg="#f0f0f0")
+    # Réappliquer le thème sombre à tout le root
+    apply_dark_mode(root)
 
 def changer_modele_whisper(modele, root, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn):
     """
@@ -271,8 +268,15 @@ def changer_modele_whisper(modele, root, record_btn, copy_prefix_btn, send_chatg
         settings = load_user_settings()
         settings["modele"] = modele
         save_user_settings(settings)
+        # Activer tous les boutons
         for widget in [record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn]:
             widget.config(state=tk.NORMAL)
+
+        # 🔽 ICI : Signaler que tout est prêt
+        print("[ClipRelay] ✅ Initialisation complète : modèle Whisper prêt.")
+        root.status_label.config(text="Modèle chargé et prêt à l’emploi", fg="green")
+        root.model_ready = True  # 🔐 Flag logique pour le raccourci clavier
+
     threading.Thread(target=load_and_reenable).start()
 
 

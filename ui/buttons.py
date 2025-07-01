@@ -2,9 +2,9 @@ import tkinter as tk
 from utils.userSettings import load_user_settings
 from services.audioService import handle_record  # Correction de l'import
 from services.vsCodeService import focus_vscode
-from services.chatgptService import handle_send_chatgpt  # Correction de l'import
+from services.chatgptService import ajouter_fichiers_a_zone_texte, handle_send_chatgpt  # Correction de l'import
 
-from utils.utilsButtons import copy_chatrelay_prefix, copy_pollution
+from utils.utilsButtons import copy_chatrelay_prefix, copy_text
 
 def create_button(parent, image, text, command, compound="left", grid_options=None, pack_options=None):
     """
@@ -141,8 +141,8 @@ def create_mode1_buttons(root, recorder, audio_state):
     copy_pollution_btn = create_button(
         button_frame,
         image=img_pollution,
-        text="Copier pollution",
-        command=lambda: copy_pollution(root),
+        text="Copier le texte",
+        command=lambda: copy_text(root),
         grid_options={"row": 0, "column": 0, "padx": 10}
     )
     root.copy_pollution_btn = copy_pollution_btn
@@ -157,6 +157,13 @@ def create_mode1_buttons(root, recorder, audio_state):
         grid_options={"row": 0, "column": 1, "padx": 10}
     )
     root.copy_prefix_btn = copy_prefix_btn
+
+    ajouter_fichiers_btn = tk.Button(
+    root.buttons_zone,
+    text="Ajouter des fichiers à la requête",
+    command=lambda: ajouter_fichiers_a_zone_texte(root.text_area)
+    )
+    ajouter_fichiers_btn.pack(pady=(5, 5))
 
     img_send = tk.PhotoImage(file="img/send.png")
     root.img_send = img_send

@@ -1,6 +1,7 @@
 import time
 from tkinter import messagebox
 import torch
+import re
 import whisper
 import sounddevice as sd
 import numpy as np
@@ -8,10 +9,8 @@ from scipy.io.wavfile import write
 import threading
 import os
 import tkinter as tk
-from utils.userSettings import PHRASES_A_SUPPRIMER_PAR_DEFAUT, load_user_settings, save_user_settings
-from utils.textProcessing import nettoyer_texte_transcription  # Importation ici pour éviter les imports circulaires
-
-MAGIC_WORDS = ["Orpax", "orpax", "Or pax", "Or Pax", "orp axe", "Horpax", "horpax"]  # Liste des variantes du mot magique
+from config import MAGIC_PHRASES
+from utils.userSettings import load_user_settings
 
 class AudioRecorder:
     """
@@ -100,13 +99,14 @@ def load_whisper_model(modele=None):
         whisper_model = whisper.load_model(MODELE).to(device)
     return whisper_model
 
-def transcrire_audio(fichier_audio, boutons_a_geler):
+def transcrire_audio(fichier_audio, boutons_a_geler, root):
     """
     Transcribe audio using the Whisper model.
 
     Args:
         fichier_audio (str): Path to the audio file to transcribe.
         boutons_a_geler (list): List of buttons to disable during transcription.
+        root (Tk): The main application window.
 
     Returns:
         str: Transcribed text.
@@ -130,21 +130,24 @@ def transcrire_audio(fichier_audio, boutons_a_geler):
         texte = result["text"]
 
         # Vérification des variantes du mot magique et arrêt après celui-ci
+        mots = texte.split()
         texte_final = []
-        for mot in texte.split():
+
+        for mot in mots:
+            mot_nettoye = re.sub(r"[^\w]", "", mot).lower()
             texte_final.append(mot)
-            if mot in MAGIC_WORDS:
+            if mot_nettoye in [m.lower() for m in MAGIC_PHRASES]:
                 print(f"Mot magique détecté ('{mot}'), arrêt de la transcription après ce mot.")
                 break
 
         texte_final = " ".join(texte_final)
 
-        # Arrêt du timer
+        # Mise à jour de l'interface utilisateur
         end_time = time.time()
         duration = end_time - start_time
-        print(f"Durée de la transcription : {duration:.2f} secondes")
+        if hasattr(root, "transcription_time_var"):
+            root.transcription_time_var.set(f"Temps de transcription : {duration:.2f} secondes")
 
-        print("Résultat :", texte_final)
         return texte_final
     except Exception as e:
         print(f"Erreur lors de la transcription : {e}")
@@ -195,7 +198,7 @@ def handle_transcribe(root, state_manager, record_btn, copy_prefix_btn, send_cha
 
         # Calcul du temps de transcription
         start_time = time.time()
-        texte = transcrire_audio("enregistrement.wav", [record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn])
+        texte = transcrire_audio("enregistrement.wav", [record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn, copy_pollution_btn], root)
         end_time = time.time()
         duration = end_time - start_time
 
@@ -204,10 +207,12 @@ def handle_transcribe(root, state_manager, record_btn, copy_prefix_btn, send_cha
         root.text_area.insert(tk.END, texte)
         state_manager.update_status("Transcription terminée.", "green")
         print("[ClipRelay] Transcription terminée")
-        # Mise à jour du temps de transcription dans l'application
         if hasattr(root, "transcription_time_var"):
             root.transcription_time_var.set(f"Temps de transcription : {duration:.2f} secondes")
         state_manager.set_buttons_state("normal")
+        # Arrêt du timer et mise à jour après le mot magique
+        if MAGIC_PHRASES[0] in texte:
+            print(f"Mot magique détecté ('{MAGIC_PHRASES[0]}'), arrêt de la transcription.")
     except Exception as e:
         state_manager.update_status(f"Erreur transcription: {e}", "red")
         print(f"[ClipRelay] Erreur transcription: {e}")
@@ -251,6 +256,9 @@ def handle_record(root, recorder, audio_state, state_manager, copy_prefix_btn, s
             state_manager.set_buttons_state("disabled")
 
             recorder.start()
+            root.timer_var.set("00:00")
+            root.transcription_time_var.set("Temps de transcription : --")
+
             record_btn.config(
                 text="Arrêter l'enregistrement",
                 image=root.img_stop_record

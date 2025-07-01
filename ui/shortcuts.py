@@ -3,6 +3,8 @@ from config import config
 from utils.userSettings import load_user_settings
 
 def on_hotkey(event=None, root=None):
+    print("[DEBUG] Raccourci déclenché")
+
     """
     Gère le raccourci clavier pour l'enregistrement.
 
@@ -13,6 +15,14 @@ def on_hotkey(event=None, root=None):
     Returns:
         None
     """
+
+    if not hasattr(root, "model_ready") or not root.model_ready:
+        print("[ClipRelay] ⛔ Modèle non prêt, raccourci ignoré.")
+        if hasattr(root, "status_label"):
+            root.status_label.config(text="Modèle non encore chargé. Réessayez dans un instant.", fg="red")
+        return
+
+
     mode = load_user_settings().get("mode", 1)
     if mode == 2:
         # Ignore le raccourci en mode anti-pollution

@@ -101,17 +101,16 @@ def add_menu(root, changer_modele_whisper):
     menubar.add_cascade(label="Temps max d'enregistrement", menu=max_menu)
 
     # Menu des modes
-    root.mode_var = tk.IntVar(value=user_settings.get("mode", 1))
+    root.mode_var = tk.IntVar(value=1)
 
     def set_mode(mode):
-        update_user_settings("mode", mode)
         root.mode_var.set(mode)
         from ui.mainWindow import switch_mode  # Import local pour éviter la boucle
         switch_mode(root, root.recorder, root.audio_state, mode)
 
     mode_menu = tk.Menu(menubar, tearoff=0)
     mode_menu.add_radiobutton(label="Mode normal", variable=root.mode_var, value=1, command=lambda: set_mode(1))
-    mode_menu.add_radiobutton(label="Mode anti-pollution", variable=root.mode_var, value=2, command=lambda: set_mode(2))
+    mode_menu.add_radiobutton(label="Mode phrase magique", variable=root.mode_var, value=2, command=lambda: set_mode(2))
     menubar.add_cascade(label="Mode", menu=mode_menu)
 
     root.config(menu=menubar)

@@ -4,7 +4,6 @@ from utils.clipRelayError import ClipRelayError
 
 SETTINGS_FILE = "settings.json"
 DUREE_ENREGISTREMENT_PAR_DEFAUT = 60
-PHRASES_A_SUPPRIMER_PAR_DEFAUT = []
 
 # Définition des labels de mode (utilisés dans l'UI)
 MODE_LABELS = {
@@ -31,8 +30,6 @@ def load_user_settings():
         # Valeur par défaut si absente
         if "duree_enregistrement" not in settings:
             settings["duree_enregistrement"] = DUREE_ENREGISTREMENT_PAR_DEFAUT
-        if "phrases_a_supprimer" not in settings:
-            settings["phrases_a_supprimer"] = PHRASES_A_SUPPRIMER_PAR_DEFAUT
         if "mode" not in settings:
             settings["mode"] = 1  # Mode normal par défaut
         return settings

@@ -13,10 +13,11 @@ config = {
     'focus_countdown': 5  # durée en secondes pour le décompte de focus ChatGPT
 }
 
-# Constantes globales
-PHRASES_A_SUPPRIMER_PAR_DEFAUT = [
-    "Merci d'utiliser Whisper.",
-    "Transcription générée automatiquement."
+MAGIC_PHRASES = [
+    "Ceci conclut la dictée whisper",
+    "ceci conclut la dictée whisper",
+    "Ceci conclut la dictée, Whisper",
+    "Ceci conclut la dictée Whisper"
 ]
 
 # Fonction de validation des données
