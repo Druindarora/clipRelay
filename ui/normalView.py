@@ -6,7 +6,7 @@ from ui.buttons import createButtons
 from ui.stateManager import StateManager
 from config import MAGIC_PHRASES
 
-def initialiser_vue_normale(root):
+def create_normal_view(root):
     """
     Initialise tous les composants visuels pour le mode normal.
     """
@@ -18,6 +18,7 @@ def initialiser_vue_normale(root):
     user_settings = load_user_settings()
     modele_court = user_settings.get("modele", "small")
     duree_max = user_settings.get("duree_enregistrement", 60)
+
 
     # Variables globales pour timers
     root.timer_var = tk.StringVar(value="00:00")

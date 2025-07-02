@@ -17,7 +17,7 @@ def create_dynamic_menu(root, menu_label, options, variable, update_callback):
         )
     return menu
 
-def add_menu(root, changer_modele_whisper):
+def add_menu(root, changer_modele_whisper, switch_mode_callback):
     menubar = tk.Menu(root)
 
     # Menu des modèles Whisper
@@ -70,16 +70,15 @@ def add_menu(root, changer_modele_whisper):
     # Menu des modes
     root.mode_var = tk.IntVar(value=1)  # Toujours démarrer en mode 1
 
-    def set_mode(mode):
-        update_user_settings("mode", mode)
+    def set_mode(mode, switch_mode_callback):
         root.mode_var.set(mode)
-        from ui.mainWindow import switch_mode  # Import local pour éviter la boucle
-        switch_mode(root, root.recorder, root.audio_state, mode)
+        switch_mode_callback(root, mode)
+
 
     mode_menu = tk.Menu(menubar, tearoff=0)
-    mode_menu.add_radiobutton(label="Mode normal", variable=root.mode_var, value=1, command=lambda: set_mode(1))
-    mode_menu.add_radiobutton(label="Mode phrase magique", variable=root.mode_var, value=2, command=lambda: set_mode(2))
-    mode_menu.add_radiobutton(label="Mode podcast", variable=root.mode_var, value=3, command=lambda: set_mode(3))
+    mode_menu.add_radiobutton(label="Mode normal", variable=root.mode_var, value=1, command=lambda: set_mode(1, switch_mode_callback))
+    mode_menu.add_radiobutton(label="Mode phrase magique", variable=root.mode_var, value=2, command=lambda: set_mode(2, switch_mode_callback))
+    mode_menu.add_radiobutton(label="Mode podcast", variable=root.mode_var, value=3, command=lambda: set_mode(3, switch_mode_callback))
     menubar.add_cascade(label="Mode", menu=mode_menu)
 
     root.config(menu=menubar)

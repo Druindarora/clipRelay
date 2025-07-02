@@ -1,10 +1,9 @@
 import tkinter as tk
 from utils.userSettings import load_user_settings, save_user_settings
 from ui.menuBar import add_menu
-from ui.normalView import initialiser_vue_normale
-from ui.magicView import initialiser_vue_magic
-from ui.podcastView import initialiser_vue_podcast
-from config import config
+from ui.normalView import create_normal_view
+from ui.magicView import create_magic_view
+from ui.podcastView import create_podcast_view
 from services.audioService import prepare_new_recording
 
 def apply_dark_mode(widget):
@@ -27,18 +26,24 @@ def apply_dark_mode(widget):
     except Exception:
         pass
 
-def switch_mode(root, recorder, audio_state, mode):
+def switch_mode(root, mode):
     """
     Bascule vers le mode 1 = normal, 2 = phrase magique, 3 = podcast.
     """
+    # On détruit tous les widgets (pas le menu)
+    # for widget in root.winfo_children():
+    #     widget.destroy()
+
+    # On recrée la bonne vue
     if mode == 1:
-        initialiser_vue_normale(root)
+        create_normal_view(root)
+        add_menu(root, changer_modele_whisper, switch_mode)
     elif mode == 2:
-        initialiser_vue_magic(root)
+        create_magic_view(root)
+        add_menu(root, changer_modele_whisper, switch_mode)
     elif mode == 3:
-        initialiser_vue_podcast(root)
-    else:
-        print(f"[ClipRelay] Mode inconnu : {mode}")
+        create_podcast_view(root)
+        add_menu(root, changer_modele_whisper, switch_mode)
     apply_dark_mode(root)
 
 def create_popup():
@@ -49,9 +54,9 @@ def create_popup():
     root.model_ready = False  # Important pour le raccourci clavier
 
     # Toujours démarrer en mode normal (1)
-    initialiser_vue_normale(root)
+    create_normal_view(root)
 
-    add_menu(root, changer_modele_whisper)
+    add_menu(root, changer_modele_whisper, switch_mode)
     apply_dark_mode(root)
 
     return root

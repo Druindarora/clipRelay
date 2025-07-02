@@ -4,7 +4,7 @@ from ui.buttons import createButtons
 from services.audioService import AudioRecorder
 from ui.stateManager import StateManager
 
-def initialiser_vue_magic(root):
+def create_magic_view(root):
     """
     Initialise la vue en mode Phrase magique.
     """
