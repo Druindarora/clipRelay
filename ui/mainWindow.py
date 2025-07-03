@@ -1,4 +1,5 @@
 import tkinter as tk
+from utils.memoryLogger import log_memory
 from utils.userSettings import load_user_settings, save_user_settings
 from ui.menuBar import add_menu
 from ui.normalView import create_normal_view
@@ -44,6 +45,7 @@ def switch_mode(root, mode):
     elif mode == 3:
         create_podcast_view(root)
         add_menu(root, changer_modele_whisper, switch_mode)
+    log_memory(f"Mode changé : {mode}")
     apply_dark_mode(root)
 
 def create_popup():

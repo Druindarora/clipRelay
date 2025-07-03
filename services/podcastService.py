@@ -1,6 +1,5 @@
 import os
 import socket
-import requests
 import uuid
 from xml.etree import ElementTree as ET
 from xml.etree.ElementTree import Element, SubElement

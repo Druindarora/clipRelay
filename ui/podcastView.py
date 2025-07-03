@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import filedialog
-import os
 import services.podcastService as podcastService
 
 # Fonction principale pour créer la vue podcast
