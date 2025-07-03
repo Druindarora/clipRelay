@@ -5,7 +5,8 @@ from ui.menuBar import add_menu
 from ui.normalView import create_normal_view
 from ui.magicView import create_magic_view
 from ui.podcastView import create_podcast_view
-from services.audioService import prepare_new_recording
+from services.audioService import prepare_new_recording, load_whisper_model
+from utils.windowState import restore_window_geometry, save_window_geometry
 
 def apply_dark_mode(widget):
     dark_bg = "#222222"
@@ -28,28 +29,37 @@ def apply_dark_mode(widget):
         pass
 
 def switch_mode(root, mode):
-    """
-    Bascule vers le mode 1 = normal, 2 = phrase magique, 3 = podcast.
-    """
-    # On détruit tous les widgets (pas le menu)
-    # for widget in root.winfo_children():
-    #     widget.destroy()
+    root.ignore_geometry = True
 
-    # On recrée la bonne vue
     if mode == 1:
         create_normal_view(root)
-        add_menu(root, changer_modele_whisper, switch_mode)
     elif mode == 2:
         create_magic_view(root)
-        add_menu(root, changer_modele_whisper, switch_mode)
     elif mode == 3:
         create_podcast_view(root)
-        add_menu(root, changer_modele_whisper, switch_mode)
+
+    add_menu(root, changer_modele_whisper, switch_mode)
     log_memory(f"Mode changé : {mode}")
     apply_dark_mode(root)
 
+    # Restaurer la géométrie APRÈS la pose des widgets
+    root.after_idle(lambda: _restore_and_unlock_geometry(root))
+
+def _restore_and_unlock_geometry(root):
+    restore_window_geometry(root)
+    root.after(200, lambda: setattr(root, "ignore_geometry", False))
+
 def create_popup():
     root = tk.Tk()
+    restore_window_geometry(root)
+
+    def on_configure(event):
+        if getattr(root, "ignore_geometry", False):
+            return
+        save_window_geometry(root)
+
+    root.bind("<Configure>", on_configure)
+
     root.title("ClipRelay")
     root.iconbitmap("img/ClipRelay.ico")
 
@@ -64,7 +74,6 @@ def create_popup():
     return root
 
 def changer_modele_whisper(modele, root, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn):
-    import services.audioService
     modele_court = modele.split("-")[-1]
 
     for widget in [record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn]:
@@ -74,7 +83,7 @@ def changer_modele_whisper(modele, root, record_btn, copy_prefix_btn, send_chatg
     print(f"[ClipRelay] Chargement du modèle {modele_court}")
 
     def load_and_reenable():
-        services.audioService.load_whisper_model(modele)
+        load_whisper_model(modele)
         root.status_label.config(text=f"Modèle {modele_court} chargé !", fg="green")
         root.modele_var.set(f"Modèle : {modele_court}")
         print(f"[ClipRelay] Modèle Whisper chargé : {modele_court}")
