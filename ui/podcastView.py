@@ -5,7 +5,8 @@ import services.podcastService as podcastService
 # Fonction principale pour créer la vue podcast
 def create_podcast_view(root):
     for widget in root.winfo_children():
-        widget.destroy()
+        if widget.winfo_class() != 'Menu':
+            widget.destroy()
 
     # Réinitialise la fenêtre
     root.title("Mode Podcast")

@@ -1,12 +1,12 @@
 import tkinter as tk
-from utils.memoryLogger import log_memory
+from utils.memoryLogger import end_timer, log_memory, start_timer
 from utils.userSettings import load_user_settings, save_user_settings
 from ui.menuBar import add_menu
 from ui.normalView import create_normal_view
 from ui.magicView import create_magic_view
 from ui.podcastView import create_podcast_view
-from services.audioService import prepare_new_recording, load_whisper_model
 from utils.windowState import restore_window_geometry, save_window_geometry
+from classes.whisper import WHISPER  # ✅ nouvelle importation
 
 def apply_dark_mode(widget):
     dark_bg = "#222222"
@@ -31,6 +31,9 @@ def apply_dark_mode(widget):
 def switch_mode(root, mode):
     root.ignore_geometry = True
 
+    if hasattr(root, "mode_var"):
+        root.mode_var.set(mode)
+
     if mode == 1:
         create_normal_view(root)
     elif mode == 2:
@@ -38,11 +41,8 @@ def switch_mode(root, mode):
     elif mode == 3:
         create_podcast_view(root)
 
-    add_menu(root, changer_modele_whisper, switch_mode)
     log_memory(f"Mode changé : {mode}")
     apply_dark_mode(root)
-
-    # Restaurer la géométrie APRÈS la pose des widgets
     root.after_idle(lambda: _restore_and_unlock_geometry(root))
 
 def _restore_and_unlock_geometry(root):
@@ -50,7 +50,11 @@ def _restore_and_unlock_geometry(root):
     root.after(200, lambda: setattr(root, "ignore_geometry", False))
 
 def create_popup():
+    start_timer("create_popup")
     root = tk.Tk()
+
+    root.mode_var = tk.IntVar(value=1)
+
     restore_window_geometry(root)
 
     def on_configure(event):
@@ -63,14 +67,11 @@ def create_popup():
     root.title("ClipRelay")
     root.iconbitmap("img/ClipRelay.ico")
 
-    root.model_ready = False  # Important pour le raccourci clavier
-
-    # Toujours démarrer en mode normal (1)
     create_normal_view(root)
-
     add_menu(root, changer_modele_whisper, switch_mode)
     apply_dark_mode(root)
 
+    end_timer("create_popup")
     return root
 
 def changer_modele_whisper(modele, root, record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn):
@@ -83,7 +84,7 @@ def changer_modele_whisper(modele, root, record_btn, copy_prefix_btn, send_chatg
     print(f"[ClipRelay] Chargement du modèle {modele_court}")
 
     def load_and_reenable():
-        load_whisper_model(modele)
+        WHISPER.load(modele)
         root.status_label.config(text=f"Modèle {modele_court} chargé !", fg="green")
         root.modele_var.set(f"Modèle : {modele_court}")
         print(f"[ClipRelay] Modèle Whisper chargé : {modele_court}")
@@ -93,10 +94,7 @@ def changer_modele_whisper(modele, root, record_btn, copy_prefix_btn, send_chatg
         for widget in [record_btn, copy_prefix_btn, send_chatgpt_btn, show_vscode_btn]:
             widget.config(state=tk.NORMAL)
         root.status_label.config(text="Modèle chargé et prêt à l’emploi", fg="green")
-        root.model_ready = True
         print("[ClipRelay] ✅ Initialisation complète : modèle Whisper prêt.")
 
     import threading
     threading.Thread(target=load_and_reenable).start()
-
-prepare_new_recording("enregistrement.wav")

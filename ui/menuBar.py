@@ -68,17 +68,14 @@ def add_menu(root, changer_modele_whisper, switch_mode_callback):
     menubar.add_cascade(label="Temps max d'enregistrement", menu=max_menu)
 
     # Menu des modes
-    root.mode_var = tk.IntVar(value=1)  # Toujours démarrer en mode 1
-
-    def set_mode(mode, switch_mode_callback):
-        root.mode_var.set(mode)
-        switch_mode_callback(root, mode)
-
+    if not hasattr(root, "mode_var"):
+        root.mode_var = tk.IntVar(value=1)  # Utilise l'instance existante si elle existe
 
     mode_menu = tk.Menu(menubar, tearoff=0)
-    mode_menu.add_radiobutton(label="Mode normal", variable=root.mode_var, value=1, command=lambda: set_mode(1, switch_mode_callback))
-    mode_menu.add_radiobutton(label="Mode phrase magique", variable=root.mode_var, value=2, command=lambda: set_mode(2, switch_mode_callback))
-    mode_menu.add_radiobutton(label="Mode podcast", variable=root.mode_var, value=3, command=lambda: set_mode(3, switch_mode_callback))
+    mode_menu.add_radiobutton(label="Mode normal", variable=root.mode_var, value=1, command=lambda: switch_mode_callback(root, 1))
+    mode_menu.add_radiobutton(label="Mode phrase magique", variable=root.mode_var, value=2, command=lambda: switch_mode_callback(root, 2))
+    mode_menu.add_radiobutton(label="Mode podcast", variable=root.mode_var, value=3, command=lambda: switch_mode_callback(root, 3))
+
     menubar.add_cascade(label="Mode", menu=mode_menu)
 
     root.config(menu=menubar)
